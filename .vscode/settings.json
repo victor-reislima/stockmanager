@@ -1,0 +1,12 @@
+{
+    "java.project.sourcePaths": ["src"],
+    "java.project.outputPath": "bin",
+    "java.project.referencedLibraries": [],
+    "cSpell.language": "en,pt-BR",
+    "cSpell.words": [
+        "Produto", "Produtos", "produto", "produtos", "preco", "Preco",
+        "quantidade", "Quantidade", "estoque", "Estoque", "cadastrar",
+        "cadastrados", "buscar", "Busca", "exibir", "Teclado", "Mecânico",
+        "encontrado", "Encontrado", "identifica", "possui", "isso", "Preço"
+    ]
+}
