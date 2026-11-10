@@ -3,7 +3,23 @@
 Sistema de gerenciamento de estoque desenvolvido em Java puro, com foco em
 orientação a objetos e organização em camadas.
 
-Versão atual: **1.0**. Cadastro, listagem e busca de produtos em memória.
+Versão atual: **1.1**. Menu interativo no terminal com cadastro, listagem,
+busca, atualização de preço, entrada e saída de estoque e remoção de produtos,
+com validação de dados. Os dados ficam em memória.
+
+---
+
+## Novidades da versão 1.1
+
+- **Menu interativo** no terminal (`view/MenuView.java`).
+- **Remoção** de produtos.
+- **Atualização de preço**.
+- **Controle de entrada e saída** de estoque, sem permitir estoque negativo.
+- **Validação de dados**: nome em branco, preço zero ou negativo, quantidade
+  negativa e entradas não numéricas são rejeitados com mensagem clara.
+- **ID gerado automaticamente** pelo `EstoqueService`, sem risco de IDs repetidos.
+- O `EstoqueService` **não imprime mais nada**: ele devolve dados e a camada de
+  visão decide como exibi-los.
 
 ---
 
@@ -18,8 +34,10 @@ stockmanager/
 │   ├── model/
 │   │   └── Produto.java       Entidade que representa um produto
 │   ├── service/
-│   │   └── EstoqueService.java  Regras de negócio do estoque
-│   └── view/                  Reservada para a interface com o usuário
+│   │   ├── EstoqueService.java                Regras de negócio do estoque
+│   │   └── ProdutoNaoEncontradoException.java Erro de produto inexistente
+│   └── view/
+│       └── MenuView.java      Menu interativo no terminal
 └── README.md                  Este documento
 ```
 
@@ -29,7 +47,7 @@ O projeto segue uma separação em camadas:
 |-----------|-----------|----------------------------------------------------|
 | Modelo    | `model`   | Representar os dados (o que é um produto)          |
 | Serviço   | `service` | Aplicar as regras de negócio (o que fazer com eles)|
-| Visão     | `view`    | Interagir com o usuário (a ser implementada)       |
+| Visão     | `view`    | Interagir com o usuário (ler e exibir)             |
 
 Cada camada tem uma única responsabilidade. Assim, trocar a forma de exibição
 (terminal, interface gráfica, web) não exige alterar as regras de negócio, e
@@ -95,69 +113,127 @@ Sem essa sobrescrita, o Java imprimiria algo como `model.Produto@1b6d3586`.
 ## `service/EstoqueService.java`
 
 Contém a **lógica de gerenciamento do estoque**. É a classe que sabe o que
-fazer com os produtos.
+fazer com os produtos e quais operações são permitidas.
 
 ### Armazenamento
 
 ```java
 private ArrayList<Produto> produtos;
+private int proximoId;
 ```
 
 Os produtos ficam em um `ArrayList`, uma lista que cresce automaticamente
-conforme novos itens são adicionados. Diferente de um array comum
-(`Produto[]`), não é preciso definir o tamanho antecipadamente. O `<Produto>`
-(generics) garante que a lista só aceita objetos do tipo `Produto`, e erros
-desse tipo são detectados já na compilação.
+conforme novos itens são adicionados. O `<Produto>` (generics) garante que a
+lista só aceita objetos do tipo `Produto`.
 
-A lista é criada no construtor, então cada `EstoqueService` começa com um
-estoque vazio.
+`proximoId` começa em 1 e aumenta a cada cadastro. Como o próprio serviço gera
+o ID, não há como cadastrar dois produtos com o mesmo ID. IDs de produtos
+removidos **não são reaproveitados**, para que um ID antigo nunca passe a
+apontar para outro produto.
 
 ### Métodos
 
-| Método                             | Descrição                                                       |
-|------------------------------------|-----------------------------------------------------------------|
-| `cadastrarProduto(Produto produto)`| Adiciona o produto à lista com `produtos.add()`                 |
-| `listarProdutos()`                 | Exibe todos os produtos, ou avisa se o estoque estiver vazio    |
-| `buscarProdutoPorId(int id)`       | Percorre a lista e retorna o produto com o ID informado, ou `null` se não houver nenhum |
+| Método                                   | Descrição |
+|------------------------------------------|-----------|
+| `cadastrarProduto(nome, preco, quantidade)` | Valida os dados, gera o ID, adiciona o produto e o retorna |
+| `listarProdutos()`                       | Retorna a lista de produtos (somente leitura) |
+| `buscarProdutoPorId(id)`                 | Retorna o produto com o ID informado, ou `null` |
+| `atualizarPreco(id, novoPreco)`          | Altera o preço do produto |
+| `registrarEntrada(id, quantidade)`       | Soma a quantidade ao estoque do produto |
+| `registrarSaida(id, quantidade)`         | Subtrai a quantidade, se houver estoque suficiente |
+| `removerProduto(id)`                     | Remove o produto do estoque e o retorna |
 
-A busca usa um laço `for-each` (`for (Produto produto : produtos)`), que
-percorre cada elemento da lista sem a necessidade de controlar índices.
+**Lista somente leitura:** `listarProdutos()` devolve
+`Collections.unmodifiableList(produtos)`. Quem recebe a lista pode percorrê-la,
+mas qualquer tentativa de `add()` ou `remove()` lança erro. Assim, toda
+alteração no estoque passa obrigatoriamente pelas regras do serviço.
+
+### Validações
+
+| Situação                               | Mensagem |
+|----------------------------------------|----------|
+| Nome vazio ou só com espaços           | O nome não pode ficar em branco. |
+| Preço zero ou negativo                 | O preço deve ser maior que zero. |
+| Quantidade inicial negativa            | A quantidade não pode ser negativa. |
+| Entrada ou saída com quantidade ≤ 0    | A quantidade deve ser maior que zero. |
+| Saída maior que o estoque disponível   | Estoque insuficiente. Disponível: N. |
+| Operação com ID inexistente            | Produto com ID N não encontrado. |
+
+Dados inválidos geram `IllegalArgumentException`, exceção padrão do Java para
+argumentos que não fazem sentido. ID inexistente gera
+`ProdutoNaoEncontradoException`.
+
+---
+
+## `service/ProdutoNaoEncontradoException.java`
+
+Exceção própria do projeto, que estende `RuntimeException`. Ter um tipo
+específico deixa claro **qual** problema aconteceu e permite tratá-lo
+separadamente de outros erros, se necessário.
+
+O método privado `obterProduto(id)` do serviço usa essa exceção: ele faz a
+busca e, se não encontrar, lança o erro. Assim, cada operação (remover,
+atualizar, movimentar) não precisa repetir o teste de `null`.
+
+---
+
+## `view/MenuView.java`
+
+Camada de **interface com o usuário**. Exibe o menu, lê os dados digitados e
+mostra os resultados. Ela não contém regras de negócio: apenas repassa os
+dados ao `EstoqueService` e exibe o que ele retorna.
+
+```
+===== StockManager =====
+1. Cadastrar produto
+2. Listar produtos
+3. Buscar produto por ID
+4. Atualizar preço
+5. Registrar entrada
+6. Registrar saída
+7. Remover produto
+0. Sair
+```
+
+- O menu roda em um laço `do-while` até o usuário escolher `0`.
+- O `switch` com `->` (Java 14+) escolhe a ação de cada opção.
+- Um único `try/catch` em `executar()` captura os erros do serviço e mostra
+  `Erro: <mensagem>`, sem encerrar o programa.
+- `lerInteiro()` e `lerDecimal()` repetem a pergunta até receber um número
+  válido. O preço aceita vírgula ou ponto (`249,90` ou `249.90`).
+- Se a entrada terminar (Ctrl+Z no Windows, Ctrl+D no Linux/macOS), o programa
+  encerra de forma limpa.
+
+O `Scanner` é criado no `Main` e passado para a `MenuView` (injeção pelo
+construtor). Isso facilita testar o menu com outra fonte de entrada no futuro.
 
 ---
 
 ## `Main.java`
 
 Ponto de entrada do programa: é o método `public static void main` que a JVM
-executa primeiro. Nesta versão, ele demonstra as funcionalidades:
+executa primeiro. Ele apenas monta as peças e inicia o menu:
 
-1. Cria uma instância de `EstoqueService`.
-2. Cadastra três produtos.
-3. Lista todos os produtos.
-4. Busca um produto existente (ID 2) e um inexistente (ID 99).
+1. Cria o `EstoqueService`.
+2. Cria o `Scanner` para ler o teclado.
+3. Cria a `MenuView` com os dois e chama `iniciar()`.
 
-O método auxiliar `exibirBusca()` evita repetir código, tratando os dois
-casos possíveis do resultado da busca (encontrado ou `null`).
-
-### Saída esperada
+### Exemplo de uso
 
 ```
-=== Produtos cadastrados ===
-ID: 1 | Nome: Teclado Mecânico | Preço: R$ 249,90 | Quantidade: 15
-ID: 2 | Nome: Mouse Sem Fio | Preço: R$ 89,90 | Quantidade: 30
-ID: 3 | Nome: Monitor 24" | Preço: R$ 899,00 | Quantidade: 8
+Escolha uma opção: 1
 
-=== Busca por ID ===
-Encontrado: ID: 2 | Nome: Mouse Sem Fio | Preço: R$ 89,90 | Quantidade: 30
-Produto com ID 99 não encontrado.
+Nome: Teclado Mecânico
+Preço: 249,90
+Quantidade: 15
+Cadastrado: ID: 1 | Nome: Teclado Mecânico | Preço: R$ 249,90 | Quantidade: 15
+
+Escolha uma opção: 6
+
+ID: 1
+Quantidade de saída: 20
+Erro: Estoque insuficiente. Disponível: 15.
 ```
-
----
-
-## `view/`
-
-Pasta reservada para a camada de interface. Na próxima versão, ela receberá o
-menu interativo no terminal, mantendo a interação com o usuário separada da
-lógica do `EstoqueService`.
 
 ---
 
@@ -182,7 +258,7 @@ Configuração do editor:
 pasta do projeto:
 
 ```
-javac -encoding UTF-8 -d bin src/Main.java src/model/Produto.java src/service/EstoqueService.java
+javac -encoding UTF-8 -d bin src/Main.java src/model/*.java src/service/*.java src/view/*.java
 java -cp bin Main
 ```
 
@@ -191,22 +267,31 @@ java -cp bin Main
 ## Conceitos aplicados
 
 - **Classes e objetos**: `Produto` é o molde; cada `new Produto(...)` cria um objeto.
-- **Encapsulamento**: atributos `private` com acesso por getters e setters.
+- **Encapsulamento**: atributos `private` com acesso por getters e setters, e
+  lista de produtos exposta apenas como somente leitura.
 - **Pacotes**: organização do código em `model`, `service` e `view`.
 - **Coleções**: `ArrayList` com generics para armazenar vários produtos.
 - **Sobrescrita de método**: `toString()` com `@Override`.
+- **Exceções**: `IllegalArgumentException` e exceção personalizada, tratadas
+  com `try/catch`.
+- **Entrada de dados**: `Scanner` com tratamento de valores inválidos.
 - **Separação de responsabilidades**: dados, regras e interface em camadas distintas.
+
+---
+
+## Histórico de versões
+
+- **1.1**: menu interativo, remoção, atualização de preço, entrada e saída de
+  estoque, validação de dados e ID automático.
+- **1.0**: cadastro, listagem e busca de produtos em memória.
 
 ---
 
 ## Próximas versões
 
-- Remoção de produtos
-- Atualização de preços e quantidades
-- Controle de entrada e saída de estoque
-- Validação de dados
-- Menu interativo no terminal
 - Persistência de dados em arquivo
+- Edição do nome do produto
+- Relatórios (valor total do estoque, produtos com estoque baixo)
+- Testes automatizados
 - Banco de dados
 - Interface gráfica ou web
-- Testes automatizados

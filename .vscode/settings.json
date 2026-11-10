@@ -7,6 +7,9 @@
         "Produto", "Produtos", "produto", "produtos", "preco", "Preco",
         "quantidade", "Quantidade", "estoque", "Estoque", "cadastrar",
         "cadastrados", "buscar", "Busca", "exibir", "Teclado", "Mecânico",
-        "encontrado", "Encontrado", "identifica", "possui", "isso", "Preço"
+        "encontrado", "Encontrado", "identifica", "possui", "isso", "Preço",
+        "remover", "Removido", "atualizar", "Atualizado", "registrar",
+        "entrada", "saída", "Movimentacao", "Nao", "proximo",
+        "Inteiro", "Decimal", "Texto", "Linha", "iniciar", "executar", "opcao"
     ]
 }
