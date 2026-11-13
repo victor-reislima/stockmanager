@@ -3,9 +3,21 @@
 Sistema de gerenciamento de estoque desenvolvido em Java puro, com foco em
 orientação a objetos e organização em camadas.
 
-Versão atual: **1.1**. Menu interativo no terminal com cadastro, listagem,
+Versão atual: **1.2**. Menu interativo no terminal com cadastro, listagem,
 busca, atualização de preço, entrada e saída de estoque e remoção de produtos,
 com validação de dados. Os dados ficam em memória.
+
+---
+
+## Novidades da versão 1.2
+
+- **Interface `EstoqueView`** (`view/EstoqueView.java`): define o contrato que
+  toda tela do StockManager precisa cumprir.
+- O `MenuView` agora **implementa** essa interface (`implements EstoqueView`),
+  e seus métodos são marcados com `@Override`.
+- O `Main` passa a depender do **contrato** (`EstoqueView`), não da
+  implementação. Para trocar o terminal por uma interface gráfica no futuro,
+  basta criar outra classe que implemente `EstoqueView`.
 
 ---
 
@@ -37,6 +49,7 @@ stockmanager/
 │   │   ├── EstoqueService.java                Regras de negócio do estoque
 │   │   └── ProdutoNaoEncontradoException.java Erro de produto inexistente
 │   └── view/
+│       ├── EstoqueView.java   Interface (contrato) das telas
 │       └── MenuView.java      Menu interativo no terminal
 └── README.md                  Este documento
 ```
@@ -177,9 +190,43 @@ atualizar, movimentar) não precisa repetir o teste de `null`.
 
 ---
 
+## `view/EstoqueView.java`
+
+Uma **interface** Java: um contrato que diz *o que* uma tela do StockManager
+precisa saber fazer, sem dizer *como*.
+
+```java
+public interface EstoqueView {
+    void iniciar();
+    void cadastrar();
+    void listar();
+    void buscar();
+    void atualizarPreco();
+    void registrarEntrada();
+    void registrarSaida();
+    void remover();
+}
+```
+
+- Os métodos não têm corpo: são apenas a "promessa".
+- Métodos de interface são públicos automaticamente.
+- Ficam de fora os detalhes específicos do terminal (`lerInteiro()`,
+  `exibirMenu()`, etc.), que continuam `private` no `MenuView`.
+
+No `Main`, a variável é declarada com o tipo da interface:
+
+```java
+EstoqueView view = new MenuView(estoque, scanner);
+```
+
+Assim, uma futura tela gráfica (`JanelaView implements EstoqueView`) poderia
+substituir o terminal mudando apenas essa linha.
+
+---
+
 ## `view/MenuView.java`
 
-Camada de **interface com o usuário**. Exibe o menu, lê os dados digitados e
+Implementação de `EstoqueView` para o **terminal**. Camada de **interface com o usuário**. Exibe o menu, lê os dados digitados e
 mostra os resultados. Ela não contém regras de negócio: apenas repassa os
 dados ao `EstoqueService` e exibe o que ele retorna.
 
@@ -216,7 +263,8 @@ executa primeiro. Ele apenas monta as peças e inicia o menu:
 
 1. Cria o `EstoqueService`.
 2. Cria o `Scanner` para ler o teclado.
-3. Cria a `MenuView` com os dois e chama `iniciar()`.
+3. Cria a `MenuView` com os dois, guarda em uma variável do tipo
+   `EstoqueView` e chama `iniciar()`.
 
 ### Exemplo de uso
 
@@ -276,11 +324,14 @@ java -cp bin Main
   com `try/catch`.
 - **Entrada de dados**: `Scanner` com tratamento de valores inválidos.
 - **Separação de responsabilidades**: dados, regras e interface em camadas distintas.
+- **Interfaces e abstração**: `EstoqueView` define o contrato e `MenuView` o
+  implementa; o `Main` depende do contrato, não da implementação.
 
 ---
 
 ## Histórico de versões
 
+- **1.2**: interface `EstoqueView`, implementada pelo `MenuView`.
 - **1.1**: menu interativo, remoção, atualização de preço, entrada e saída de
   estoque, validação de dados e ID automático.
 - **1.0**: cadastro, listagem e busca de produtos em memória.

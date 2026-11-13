@@ -6,7 +6,7 @@ import model.Produto;
 import service.EstoqueService;
 import service.ProdutoNaoEncontradoException;
 
-public class MenuView {
+public class MenuView implements EstoqueView {
 
     private final EstoqueService estoque;
     private final Scanner scanner;
@@ -16,6 +16,7 @@ public class MenuView {
         this.scanner = scanner;
     }
 
+    @Override
     public void iniciar() {
         int opcao;
         do {
@@ -58,7 +59,8 @@ public class MenuView {
         }
     }
 
-    private void cadastrar() {
+    @Override
+    public void cadastrar() {
         String nome = lerTexto("Nome: ");
         double preco = lerDecimal("Preço: ");
         int quantidade = lerInteiro("Quantidade: ");
@@ -66,7 +68,8 @@ public class MenuView {
         System.out.println("Cadastrado: " + produto);
     }
 
-    private void listar() {
+    @Override
+    public void listar() {
         List<Produto> produtos = estoque.listarProdutos();
         if (produtos.isEmpty()) {
             System.out.println("Nenhum produto cadastrado.");
@@ -77,7 +80,8 @@ public class MenuView {
         }
     }
 
-    private void buscar() {
+    @Override
+    public void buscar() {
         int id = lerInteiro("ID: ");
         Produto produto = estoque.buscarProdutoPorId(id);
         if (produto != null) {
@@ -87,25 +91,29 @@ public class MenuView {
         }
     }
 
-    private void atualizarPreco() {
+    @Override
+    public void atualizarPreco() {
         int id = lerInteiro("ID: ");
         double preco = lerDecimal("Novo preço: ");
         System.out.println("Atualizado: " + estoque.atualizarPreco(id, preco));
     }
 
-    private void registrarEntrada() {
+    @Override
+    public void registrarEntrada() {
         int id = lerInteiro("ID: ");
         int quantidade = lerInteiro("Quantidade de entrada: ");
         System.out.println("Atualizado: " + estoque.registrarEntrada(id, quantidade));
     }
 
-    private void registrarSaida() {
+    @Override
+    public void registrarSaida() {
         int id = lerInteiro("ID: ");
         int quantidade = lerInteiro("Quantidade de saída: ");
         System.out.println("Atualizado: " + estoque.registrarSaida(id, quantidade));
     }
 
-    private void remover() {
+    @Override
+    public void remover() {
         int id = lerInteiro("ID: ");
         System.out.println("Removido: " + estoque.removerProduto(id));
     }

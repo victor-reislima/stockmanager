@@ -1,6 +1,7 @@
 import java.util.Scanner;
 import service.EstoqueService;
 import view.MenuView;
+import view.EstoqueView;
 
 public class Main {
 
@@ -8,8 +9,8 @@ public class Main {
         EstoqueService estoque = new EstoqueService();
         Scanner scanner = new Scanner(System.in);
 
-        MenuView menu = new MenuView(estoque, scanner);
-        menu.iniciar();
+        EstoqueView view = new MenuView(estoque, scanner);
+        view.iniciar();
 
         scanner.close();
     }
